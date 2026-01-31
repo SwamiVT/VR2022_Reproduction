@@ -1,0 +1,312 @@
+---
+title: "VR2022 Reproduction Script"
+author: "Viplav Tuladhar & Alex O. Holcombe"
+bibliography: VR2022Report.bib
+csl: apa.csl
+format: html
+editor: visual
+---
+
+# Loading of Data/Packages
+
+This file has all the code for the reproduction and futher testing for Veríssimo et. al. (2022) The chunk below loads the packages used and the data as well.
+
+```{r}
+#| label: Package and Data Load
+
+library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork)
+
+ant <- read.table("Verissimo et al/data/ANT-data.csv", sep = ",", header = TRUE, fileEncoding = "utf-8")
+```
+
+## Centering Function Code
+
+The following code chunk reproduces the centering and p-value calculation function used in the VR2022 paper.
+
+```{r}
+#| label: centering and p-value function
+
+# Centering
+c.  <- function(x) {scale(as.numeric(x), scale=F)}
+# p-values
+p.lmer <- function(model){
+  p.from.t <- function (tval, obs, nf){2*(1-pt(abs(tval), obs-nf))}
+  msum <- summary(model)
+  mts <- msum$coefficients[, "t value"]
+  mdp <- msum$devcomp$dims["N"]
+  mfe <- nrow(msum$coefficients)
+  mps <- as.matrix(round(p.from.t(mts, mdp, mfe), 4))
+  colnames(mps) <- "p value"
+  return(mps)
+}
+```
+
+# Models
+
+## Main Models (For Log and Raw RTs)
+
+The code for the reproduction of the main model (both log RT and Raw RT) and the age gated analysis is provided in this section.
+
+```{r}
+#| label: Subset data for linear modelling (main model)
+
+#Subset (excluded: participants less than 75% accuracy, incorrect responses, double cue trials)
+nrow(ant.main <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Cue!="DOUBLE" & ant$Accuracy==1,]))
+length(unique(ant.main$Participant_ID))
+#Contrasts (for Sex, Flanker, and Cue)
+ant.main$Sex <- factor(ant.main$Sex, levels=c("Female", "Male"))
+(contrasts(ant.main$Sex) <- matrix(dimnames=list(levels(ant.main$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.main$Flanker <- factor(ant.main$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.main$Flanker) <- matrix(dimnames=list(levels(ant.main$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.main$Cue <- factor(ant.main$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.main$Cue) <- matrix(dimnames=list(levels(ant.main$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+```
+
+```{r}
+#| label: Linear Main Models and Follow-ups (Log and Raw)
+
+# Main Model (Log RT)
+m <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+            Cue * Flanker +
+            Cue * c.(Age) +
+            Flanker * c.(Age) +
+            Sex + c.(Education) + c.(Trial),
+          ant.main)
+print(summary(m), cor=F)
+cbind(summary(m)$coefficients, p.lmer(m), confint(m, parm="beta_"))
+
+---
+## Linear analysis (follow-ups)
+---
+  
+## Baseline: Age=58
+m.age.min <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                    Cue * Flanker +
+                    Cue * I(Age-58) +
+                    Flanker * I(Age-58) +
+                    Sex + c.(Education) + c.(Trial),
+                  ant.main)
+print(summary(m.age.min), cor=F)
+cbind(summary(m.age.min)$coefficients, p.lmer(m.age.min))
+confint(m.age.min, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=98
+m.age.max <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                    Cue * Flanker +
+                    Cue * I(Age-98) +
+                    Flanker * I(Age-98) +
+                    Sex + c.(Education) + c.(Trial),
+                  ant.main)
+print(summary(m.age.max), cor=F)
+cbind(summary(m.age.max)$coefficients, p.lmer(m.age.max))
+confint(m.age.max, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=90
+m.age.90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * I(Age-90) +
+                   Flanker * I(Age-90) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.main)
+print(summary(m.age.90), cor=F)
+cbind(summary(m.age.90)$coefficients, p.lmer(m.age.90))
+confint(m.age.90, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=74 (smallest alerting effect, in absolute value of the estimate)
+m.age.74 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * I(Age-74) +
+                   Flanker * I(Age-74) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.main)
+print(summary(m.age.74), cor=F)
+cbind(summary(m.age.74)$coefficients, p.lmer(m.age.74))
+confint(m.age.74, parm="Cue.ALERTING")
+
+## Under 90
+m.age.u90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+            Cue * Flanker +
+            Cue * c.(Age) +
+            Flanker * c.(Age) +
+            Sex + c.(Education) + c.(Trial),
+          ant.main[ant.main$Age<90,])
+print(summary(m.age.u90), cor=F)
+cbind(summary(m.age.u90)$coefficients, p.lmer(m.age.u90), confint(m.age.u90, parm="beta_"))
+
+---------------------------------------------------------------------------------
+
+# Main Model (Raw RT)
+  
+m.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
+                    Cue * Flanker +
+                    Cue * c.(Age) +
+                    Flanker * c.(Age) +
+                    Sex + c.(Education) + c.(Trial),
+                  ant.main)
+print(summary(m.raw), cor = FALSE)
+cbind(summary(m.raw)$coefficients, p.lmer(m.raw), confint(m.raw, parm="beta_"))
+
+---
+## Raw analysis (follow-ups)
+---
+  
+## Baseline: Age=58
+m.age.min.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                    Cue * Flanker +
+                    Cue * I(Age-58) +
+                    Flanker * I(Age-58) +
+                    Sex + c.(Education) + c.(Trial),
+                  ant.main)
+print(summary(m.age.min.raw), cor=F)
+cbind(summary(m.age.min.raw)$coefficients, p.lmer(m.age.min.raw))
+confint(m.age.min.raw, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=98
+m.age.max.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                    Cue * Flanker +
+                    Cue * I(Age-98) +
+                    Flanker * I(Age-98) +
+                    Sex + c.(Education) + c.(Trial),
+                  ant.main)
+print(summary(m.age.max.raw), cor=F)
+cbind(summary(m.age.max.raw)$coefficients, p.lmer(m.age.max.raw))
+confint(m.age.max.raw, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=90
+m.age.90.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * I(Age-90) +
+                   Flanker * I(Age-90) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.main)
+print(summary(m.age.90.raw), cor=F)
+cbind(summary(m.age.90.raw)$coefficients, p.lmer(m.age.90.raw))
+confint(m.age.90.raw, parm=c("Cue.ALERTING", "Cue.ORIENTING", "Flanker.EXECUTIVE"))
+
+## Baseline: Age=74 (smallest alerting effect in the main model, in absolute value of the estimate)
+m.age.74.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * I(Age-74) +
+                   Flanker * I(Age-74) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.main)
+print(summary(m.age.74.raw), cor=F)
+cbind(summary(m.age.74.raw)$coefficients, p.lmer(m.age.74.raw))
+confint(m.age.74.raw, parm="Cue.ALERTING")
+
+## Baseline: Age=73 (smallest alerting effect for raw model, in absolute value of the estimate)
+m.age.73.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * I(Age-73) +
+                   Flanker * I(Age-73) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.main)
+print(summary(m.age.73.raw), cor=F)
+cbind(summary(m.age.73.raw)$coefficients, p.lmer(m.age.73.raw))
+confint(m.age.73.raw, parm="Cue.ALERTING")
+
+## Under 90
+m.age.u90.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+            Cue * Flanker +
+            Cue * c.(Age) +
+            Flanker * c.(Age) +
+            Sex + c.(Education) + c.(Trial),
+          ant.main[ant.main$Age<90,])
+print(summary(m.age.u90.raw), cor=F)
+cbind(summary(m.age.u90.raw)$coefficients, p.lmer(m.age.u90.raw), confint(m.age.u90.raw, parm="beta_"))
+```
+
+## Mixed Model (Log and Raw RT)
+
+This section has the code for the mixed models (Log and Raw RT) i.e. calculating alerting and orienting network using both double and central. This code has been corrected to obtain the correct findings. Point to be noted is that only the Alerting and Executive networks can be estimated using this model
+
+```{r}
+#| label: Subset data for Linear Mixed Model
+
+# Subset (excluded: participants less than 75% accuracy, incorrect responses - double cue trials are kept)
+## Data points and n of participants with central and double cues
+nrow(ant.mixed.corrected <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Accuracy==1,]))
+length(unique(ant.mixed.corrected$Participant_ID))
+# Recode DOUBLE are CENTRAL
+ant.mixed.corrected$Cue <- factor(ant.mixed.corrected$Cue, levels = c("CENTRAL", "DOUBLE", "NOCUE", "SPATIAL"))
+levels(ant.mixed.corrected$Cue)[levels(ant.mixed.corrected$Cue)=="DOUBLE"] <- "CENTRAL"
+# Contrasts (for Sex, Flanker, and Cue)
+ant.mixed.corrected$Sex <- factor(ant.mixed.corrected$Sex, levels=c("Female", "Male"))
+(contrasts(ant.mixed.corrected$Sex) <- matrix(dimnames=list(levels(ant.mixed.corrected$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.mixed.corrected$Flanker <- factor(ant.mixed.corrected$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.mixed.corrected$Flanker) <- matrix(dimnames=list(levels(ant.mixed.corrected$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.mixed.corrected$Cue <- factor(ant.mixed.corrected$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.mixed.corrected$Cue) <- matrix(dimnames=list(levels(ant.mixed.corrected$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+```
+
+```{r}
+#| label: Linear Mixed Models and Follow-ups (Log and Raw RT)
+
+# Mixed Model (Log RT)
+m.mixed <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * c.(Age) +
+                   Flanker * c.(Age) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.mixed.corrected)
+print(summary(m.mixed), cor=F)
+cbind(summary(m.mixed)$coefficients, p.lmer(m.mixed), confint(m.mixed, parm="beta_"))
+
+---------------------------------------------------------------------------------
+
+# Mixed Model (Raw RT)
+m.mixed.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                   Cue * Flanker +
+                   Cue * c.(Age) +
+                   Flanker * c.(Age) +
+                   Sex + c.(Education) + c.(Trial),
+                 ant.mixed.corrected)
+print(summary(m.mixed.raw), cor=F)
+cbind(summary(m.mixed.raw)$coefficients, p.lmer(m.mixed.raw), confint(m.mixed.raw, parm="beta_"))
+```
+
+## Double Model (Log and Raw RT)
+
+The section has the code for the reproduction of the double models i.e. calculation of alerting and orienting network is done with double cues rather than central cues.
+
+```{r}
+#| label: Subset data for Linear Double Model
+
+# Subset (excluded: participants less than 75% accuracy, incorrect responses, double cue trials)
+nrow(ant.double <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Cue!="CENTRAL" & ant$Accuracy==1,]))
+length(unique(ant.double$Participant_ID))
+# Contrasts (for Sex, Flanker, and Cue)
+ant.double$Sex <- factor(ant.double$Sex, levels=c("Female", "Male"))
+(contrasts(ant.double$Sex) <- matrix(dimnames=list(levels(ant.double$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.double$Flanker <- factor(ant.double$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.double$Flanker) <- matrix(dimnames=list(levels(ant.double$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.double$Cue <- factor(ant.double$Cue, levels=c("DOUBLE", "NOCUE", "SPATIAL"))
+(contrasts(ant.double$Cue) <- matrix(dimnames=list(levels(ant.double$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+```
+
+```{r}
+#| label: Linear Double Models and Follow-ups (Log and Raw RT)
+
+# Double Model (Log RT)
+m.double <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                     Cue * Flanker +
+                     Cue * c.(Age) +
+                     Flanker * c.(Age) +
+                     Sex + c.(Education) + c.(Trial),
+                   ant.double)
+print(summary(m.double), cor = FALSE)
+cbind(summary(m.double)$coefficients, p.lmer(m.double), confint(m.double, parm = "beta_"))
+
+---------------------------------------------------------------------------------
+
+# Double Model (Raw RT) 
+m.double.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
+                     Cue * Flanker +
+                     Cue * c.(Age) +
+                     Flanker * c.(Age) +
+                     Sex + c.(Education) + c.(Trial),
+                   ant.double)
+print(summary(m.double.raw), cor = FALSE)
+cbind(summary(m.double.raw)$coefficients, p.lmer(m.double.raw), confint(m.double.raw, parm = "beta_"))
+
+```
