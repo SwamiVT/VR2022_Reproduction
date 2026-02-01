@@ -75,9 +75,7 @@ m <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
 print(summary(m), cor=F)
 cbind(summary(m)$coefficients, p.lmer(m), confint(m, parm="beta_"))
 
----
 ## Linear analysis (follow-ups)
----
   
 ## Baseline: Age=58
 m.age.min <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
@@ -133,8 +131,6 @@ m.age.u90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
 print(summary(m.age.u90), cor=F)
 cbind(summary(m.age.u90)$coefficients, p.lmer(m.age.u90), confint(m.age.u90, parm="beta_"))
 
----------------------------------------------------------------------------------
-
 # Main Model (Raw RT)
   
 m.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
@@ -146,9 +142,7 @@ m.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
 print(summary(m.raw), cor = FALSE)
 cbind(summary(m.raw)$coefficients, p.lmer(m.raw), confint(m.raw, parm="beta_"))
 
----
 ## Raw analysis (follow-ups)
----
   
 ## Baseline: Age=58
 m.age.min.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
@@ -252,8 +246,6 @@ m.mixed <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
 print(summary(m.mixed), cor=F)
 cbind(summary(m.mixed)$coefficients, p.lmer(m.mixed), confint(m.mixed, parm="beta_"))
 
----------------------------------------------------------------------------------
-
 # Mixed Model (Raw RT)
 m.mixed.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
                    Cue * Flanker +
@@ -297,8 +289,6 @@ m.double <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
 print(summary(m.double), cor = FALSE)
 cbind(summary(m.double)$coefficients, p.lmer(m.double), confint(m.double, parm = "beta_"))
 
----------------------------------------------------------------------------------
-
 # Double Model (Raw RT) 
 m.double.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
                      Cue * Flanker +
@@ -309,4 +299,112 @@ m.double.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
 print(summary(m.double.raw), cor = FALSE)
 cbind(summary(m.double.raw)$coefficients, p.lmer(m.double.raw), confint(m.double.raw, parm = "beta_"))
 
+```
+
+## Breakpoint Model
+
+The following code is for the reproduction of the breakpoint model
+
+```{r}
+#| label: Breakpoint Model (Log and Raw RT) 
+
+# Discovery of best breakpoint (Log RT)
+# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
+models.fit <- NULL
+
+for(bp in seq(min(ant.main$Age), max(ant.main$Age), 1)){
+  ant.main$adj.Age <- ant.main$Age - bp
+  ant.main$post.bp <- as.numeric(ant.main$adj.Age>0)
+  m.current <- lmer(log(RT) ~ (1|Participant_ID) +
+                      Cue * Flanker +
+                      Cue * (adj.Age + adj.Age:post.bp) +
+                      Flanker * (adj.Age + adj.Age:post.bp) +
+                      Sex + c.(Education) + c.(Trial),
+                    ant.main, REML=F)
+  m.current.fit <- data.frame(Breakpoint=bp, Deviance=deviance(m.current, REML=F), AIC=AIC(m.current))
+models.fit <- rbind(models.fit, m.current.fit)}
+
+# Best breakpoint
+models.fit[models.fit$AIC==min(models.fit$AIC),]
+bp <- models.fit[models.fit$AIC==min(models.fit$AIC),]$Breakpoint
+
+# Make indicator variable
+ant.main$adj.Age <- ant.main$Age - bp
+ant.main$post.bp <- as.numeric(ant.main$adj.Age>0)
+
+# Model
+m.break <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * (adj.Age + adj.Age:post.bp) +
+                  Flanker * (adj.Age + adj.Age:post.bp) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.main)
+print(summary(m.break), cor=F)
+cbind(summary(m.break)$coefficients, p.lmer(m.break))
+confint(m.break, parm=c("Cue.ALERTING:adj.Age:post.bp", "Cue.ORIENTING:adj.Age:post.bp", "Flanker.EXECUTIVE:adj.Age:post.bp",
+                        "Flanker.EXECUTIVE:adj.Age"))
+
+# Figure showing Breakpoint Search
+models.fit$deltaAIC <- models.fit$AIC - min(models.fit$AIC)
+
+ggplot(models.fit, aes(x = Breakpoint, y = deltaAIC)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_vline(xintercept = bp, linetype = "dotted", linewidth = 0.8) +
+    labs(
+        x = "Age Breakpoint",
+        y = expression(Delta*AIC),
+        title = "Breakpoint (Log RT) Search Using AIC"
+    ) +
+    theme_classic()
+
+# Discovery of best breakpoint (Raw RT)
+# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
+models.fit.raw <- NULL
+
+for(bp in seq(min(ant.main$Age), max(ant.main$Age), 1)){
+  ant.main$adj.Age <- ant.main$Age - bp
+  ant.main$post.bp <- as.numeric(ant.main$adj.Age>0)
+  m.current.raw <- lmer(RT ~ (1|Participant_ID) +
+                      Cue * Flanker +
+                      Cue * (adj.Age + adj.Age:post.bp) +
+                      Flanker * (adj.Age + adj.Age:post.bp) +
+                      Sex + c.(Education) + c.(Trial),
+                    ant.main, REML=F)
+  m.current.fit.raw <- data.frame(Breakpoint=bp, Deviance=deviance(m.current.raw, REML=F), AIC=AIC(m.current.raw))
+models.fit.raw <- rbind(models.fit.raw, m.current.fit.raw)}
+
+# Best breakpoint
+models.fit.raw[models.fit.raw$AIC==min(models.fit.raw$AIC),]
+bp.raw <- models.fit.raw[models.fit.raw$AIC==min(models.fit.raw$AIC),]$Breakpoint
+
+# Make indicator variable
+ant.main$adj.Age <- ant.main$Age - bp
+ant.main$post.bp <- as.numeric(ant.main$adj.Age>0)
+
+# Model
+m.break.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * (adj.Age + adj.Age:post.bp) +
+                  Flanker * (adj.Age + adj.Age:post.bp) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.main)
+print(summary(m.break.raw), cor=F)
+cbind(summary(m.break.raw)$coefficients, p.lmer(m.break.raw))
+confint(m.break.raw, parm=c("Cue.ALERTING:adj.Age:post.bp", "Cue.ORIENTING:adj.Age:post.bp", "Flanker.EXECUTIVE:adj.Age:post.bp",
+                        "Flanker.EXECUTIVE:adj.Age"))
+
+# Figure showing Breakpoint Search
+models.fit.raw$deltaAIC <- models.fit.raw$AIC - min(models.fit.raw$AIC)
+
+ggplot(models.fit.raw, aes(x = Breakpoint, y = deltaAIC)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_vline(xintercept = bp, linetype = "dotted", linewidth = 0.8) +
+    labs(
+        x = "Age Breakpoint",
+        y = expression(Delta*AIC),
+        title = "Breakpoint (Raw RT) Search Using AIC"
+    ) +
+    theme_classic()
 ```
