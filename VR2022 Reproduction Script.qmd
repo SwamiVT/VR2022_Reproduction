@@ -9,12 +9,14 @@ editor: visual
 
 # Loading of Data/Packages
 
-This file has all the code for the reproduction and futher testing for Veríssimo et. al. (2022) The chunk below loads the packages used and the data as well.
+This file has all the code for the reproduction and further testing for Veríssimo et. al. (2022) The chunk below loads the packages used and the data as well.
 
 ```{r}
-#| label: Package and Data Load
+#| label: Package, Data and Seed information
 
-library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork)
+library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr)
+
+seed(1996)
 
 ant <- read.table("Verissimo et al/data/ANT-data.csv", sep = ",", header = TRUE, fileEncoding = "utf-8")
 ```
@@ -407,4 +409,181 @@ ggplot(models.fit.raw, aes(x = Breakpoint, y = deltaAIC)) +
         title = "Breakpoint (Raw RT) Search Using AIC"
     ) +
     theme_classic()
+```
+
+# Reliability
+
+For the purposes of reliability we have chosen Spearman Brown Intraclass Correlation Coefficient (S-B) and Guttman. Which are the two most popular reliability measures in ANT literature. Both are split-half and S-B is run with 10000 permutations as in literature prior.
+
+```{r}
+#| label: Multi Permutation Correlation Reliability ICC
+set.seed(1996)
+
+n_perm <- 10000
+exec_corrs <- numeric(n_perm)
+alert_corrs <- numeric(n_perm)
+orient_corrs <- numeric(n_perm)
+alert_d_corrs <- numeric(n_perm)
+
+# Alerting
+for (i in seq_len(n_perm)) {
+
+  ant_gutt_random <- droplevels(
+    ant[ant$AccuracyAtLeast75 == 1 & ant$Accuracy == 1, ]
+  ) |>
+    group_by(Participant_ID, Cue) |>
+    mutate(split = sample(rep(c("A", "B"), length.out = n()))) |>
+    ungroup()
+
+  # Alerting network score
+  alert_score_random <- ant_gutt_random |>
+    group_by(Participant_ID, split, Cue) |>
+    summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+    group_by(Participant_ID, split) |>
+    summarise(
+      Alert_Net = RT[Cue == "NOCUE"] -
+                 RT[Cue == "CENTRAL"],
+      .groups = "drop"
+    )
+
+  alert_gutt_random <- alert_score_random |>
+    pivot_wider(names_from = split, values_from = Alert_Net)
+
+  # Split-half correlation
+  alert_corrs[i] <- icc(alert_gutt_random[, c("A", "B")],
+                        model = "twoway",
+                        type = "consistency",
+                        unit = "single")$value
+}
+
+alert_corrs_SB <- (2 * alert_corrs) / (1 + alert_corrs)
+alert_est <- median(alert_corrs_SB, na.rm = TRUE)
+alert_CI <- quantile(alert_corrs_SB,
+                    c(0.025, 0.975),
+                    na.rm = TRUE)
+hist(alert_corrs,
+     breaks = 50,
+     main = "Permutation-based split-half correlations",
+     xlab = "Correlation")
+
+# Executive
+for (i in seq_len(n_perm)) {
+
+  ant_gutt_random <- droplevels(
+    ant[ant$AccuracyAtLeast75 == 1 & ant$Accuracy == 1, ]
+  ) |>
+    group_by(Participant_ID, Flanker) |>
+    mutate(split = sample(rep(c("A", "B"), length.out = n()))) |>
+    ungroup()
+
+  # Executive network score
+  exec_score_random <- ant_gutt_random |>
+    group_by(Participant_ID, split, Flanker) |>
+    summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+    group_by(Participant_ID, split) |>
+    summarise(
+      Exec_Net = RT[Flanker == "INCONGRUENT"] -
+                 RT[Flanker == "CONGRUENT"],
+      .groups = "drop"
+    )
+
+  exec_gutt_random <- exec_score_random |>
+    pivot_wider(names_from = split, values_from = Exec_Net)
+
+  # Split-half correlation
+  exec_corrs[i] <- icc(exec_gutt_random[, c("A", "B")],
+                        model = "twoway",
+                        type = "consistency",
+                        unit = "single")$value
+}
+exec_corrs_SB <- (2 * exec_corrs) / (1 + exec_corrs)
+exec_est <- median(exec_corrs_SB, na.rm = TRUE)
+exec_CI <- quantile(exec_corrs_SB,
+                    c(0.025, 0.975),
+                    na.rm = TRUE)
+hist(exec_corrs,
+     breaks = 50,
+     main = "Permutation-based split-half correlations",
+     xlab = "Correlation")
+
+# Orienting
+for (i in seq_len(n_perm)) {
+
+  ant_gutt_random <- droplevels(
+    ant[ant$AccuracyAtLeast75 == 1 & ant$Accuracy == 1, ]
+  ) |>
+    group_by(Participant_ID, Cue) |>
+    mutate(split = sample(rep(c("A", "B"), length.out = n()))) |>
+    ungroup()
+
+  # Orienting network score
+  orient_score_random <- ant_gutt_random |>
+    group_by(Participant_ID, split, Cue) |>
+    summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+    group_by(Participant_ID, split) |>
+    summarise(
+      Orient_Net = RT[Cue == "CENTRAL"] -
+                 RT[Cue == "SPATIAL"],
+      .groups = "drop"
+    )
+
+  orient_gutt_random <- orient_score_random |>
+    pivot_wider(names_from = split, values_from = Orient_Net)
+
+  # Split-half correlation
+  orient_corrs[i] <- icc(orient_gutt_random[, c("A", "B")],
+                        model = "twoway",
+                        type = "consistency",
+                        unit = "single")$value
+}
+orient_corrs_SB <- (2 * orient_corrs) / (1 + orient_corrs)
+orient_est <- median(orient_corrs_SB, na.rm = TRUE)
+orient_CI <- quantile(orient_corrs_SB,
+                    c(0.025, 0.975),
+                    na.rm = TRUE)
+hist(orient_corrs,
+     breaks = 50,
+     main = "Permutation-based split-half correlations",
+     xlab = "Correlation")
+
+# Alerting Double
+for (i in seq_len(n_perm)) {
+
+  ant_gutt_random <- droplevels(
+    ant[ant$AccuracyAtLeast75 == 1 & ant$Accuracy == 1, ]
+  ) |>
+    group_by(Participant_ID, Cue) |>
+    mutate(split = sample(rep(c("A", "B"), length.out = n()))) |>
+    ungroup()
+
+  # Alerting network score
+  alert_d_score_random <- ant_gutt_random |>
+    group_by(Participant_ID, split, Cue) |>
+    summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+    group_by(Participant_ID, split) |>
+    summarise(
+      Alert_Net = RT[Cue == "NOCUE"] -
+                 RT[Cue == "DOUBLE"],
+      .groups = "drop"
+    )
+
+  alert_d_gutt_random <- alert_d_score_random |>
+    pivot_wider(names_from = split, values_from = Alert_Net)
+
+  # Split-half correlation
+  alert_d_corrs[i] <- icc(alert_d_gutt_random[, c("A", "B")],
+                        model = "twoway",
+                        type = "consistency",
+                        unit = "single")$value
+}
+alert_d_corrs_SB <- (2 * alert_d_corrs) / (1 + alert_d_corrs)
+alert_d_est <- median(alert_d_corrs_SB, na.rm = TRUE)
+alert_d_CI <- quantile(alert_d_corrs_SB,
+                    c(0.025, 0.975),
+                    na.rm = TRUE)
+
+hist(alert_d_corrs,
+     breaks = 50,
+     main = "Permutation-based split-half correlations",
+     xlab = "Correlation")
 ```
