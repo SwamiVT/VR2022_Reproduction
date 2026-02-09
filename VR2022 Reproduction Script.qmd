@@ -16,7 +16,7 @@ This file has all the code for the reproduction and further testing for Veríssi
 
 library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr)
 
-seed(1996)
+set.seed(1996)
 
 ant <- read.table("Verissimo et al/data/ANT-data.csv", sep = ",", header = TRUE, fileEncoding = "utf-8")
 ```
@@ -300,6 +300,59 @@ m.double.raw <- lmer(RT ~ (1 + Flanker | Participant_ID) +
                    ant.double)
 print(summary(m.double.raw), cor = FALSE)
 cbind(summary(m.double.raw)$coefficients, p.lmer(m.double.raw), confint(m.double.raw, parm = "beta_"))
+
+```
+
+## Quadratic Model
+
+The following code produces the reproduction of the quadratic main model as well as the alternate models with quadratic terms
+
+```{r}
+#| label: Quadratic Models
+
+# main model (log RT)
+m.quad <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                 Cue * Flanker +
+                 Cue * poly(c.(Age), 2) +
+                 Flanker * poly(c.(Age), 2) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.main)
+print(summary(m.quad), cor=F)
+cbind(summary(m.quad)$coefficients, p.lmer(m.quad))
+confint(m.quad, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
+
+# main model (raw RT)
+m.quad.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+                 Cue * Flanker +
+                 Cue * poly(c.(Age), 2) +
+                 Flanker * poly(c.(Age), 2) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.main)
+print(summary(m.quad.raw), cor=F)
+cbind(summary(m.quad.raw)$coefficients, p.lmer(m.quad.raw))
+confint(m.quad.raw, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
+
+# double cue model (log RT)
+m.quad.double <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                 Cue * Flanker +
+                 Cue * poly(c.(Age), 2) +
+                 Flanker * poly(c.(Age), 2) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.double)
+print(summary(m.quad.double), cor=F)
+cbind(summary(m.quad.double)$coefficients, p.lmer(m.quad.double))
+confint(m.quad.double, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
+
+# combined model (log RT)
+m.quad.mixed <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                 Cue * Flanker +
+                 Cue * poly(c.(Age), 2) +
+                 Flanker * poly(c.(Age), 2) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.mixed.corrected)
+print(summary(m.quad.mixed), cor=F)
+cbind(summary(m.quad.mixed)$coefficients, p.lmer(m.quad.mixed))
+confint(m.quad.mixed, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
 
 ```
 
