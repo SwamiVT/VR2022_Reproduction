@@ -65,7 +65,7 @@ ant.main$Cue <- factor(ant.main$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
 ```
 
 ```{r}
-#| label: Linear Main Models and Follow-ups (Log and Raw)
+#| label: Linear Main Models and Age Follow-ups (Log and Raw)
 
 # Main Model (Log RT)
 m <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
@@ -212,51 +212,295 @@ print(summary(m.age.u90.raw), cor=F)
 cbind(summary(m.age.u90.raw)$coefficients, p.lmer(m.age.u90.raw), confint(m.age.u90.raw, parm="beta_"))
 ```
 
-## Mixed Model (Log and Raw RT)
+```{r}
+#| label: Senitivity Analysis for the Main Linear Model
 
-This section has the code for the mixed models (Log and Raw RT) i.e. calculating alerting and orienting network using both double and central. This code has been corrected to obtain the correct findings. Point to be noted is that only the Alerting and Executive networks can be estimated using this model
+# Participant Mean log-RT as a Covariate (Random Intercept for this is 0)
+ant.main$Participant.RT.log <- ave(log(ant.main$RT), list(ant.main$Participant_ID), FUN = mean)
+
+m.rt <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c.(Trial) + c.(Participant.RT.log),
+               ant.main)
+print(summary(m.rt), cor = F)
+cbind(summary(m.rt)$coefficients, p.lmer(m.rt)) 
+confint(m.rt, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# No Covariates
+m.nc <- lmer(log(RT) ~ (1 | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age),
+               ant.main)
+print(summary(m.nc), cor = F)
+cbind(summary(m.nc)$coefficients, p.lmer(m.nc))
+confint(m.nc, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Visual Acuity as a Covariate
+# n of participants without a valid visual acuity score
+nrow(ant.main[!is.na(ant.main$Visual_Acuity), ])
+length(unique(ant.main[!is.na(ant.main$Visual_Acuity), ]$Participant_ID))
+
+m.vis <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c. (Trial) + c.(Visual_Acuity),
+               ant.main[!is.na(ant.main$Visual_Acuity), ])
+print(summary(m.vis), cor = F)
+cbind(summary(m.vis)$coefficients, p.lmer(m.vis)) 
+confint(m.vis, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1600ms
+# Data below 1600ms
+nrow(ant.main[ant.main$RT<1600,])
+
+m.1600 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.main[ant.main$RT<1600, ])
+print(summary(m.1600), cor = F)
+cbind(summary(m.1600)$coefficients, p.lmer(m.1600)) 
+confint(m.1600, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1500ms
+# Data below 1500ms
+nrow(ant.main[ant.main$RT<1500,])
+
+m.1500 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.main[ant.main$RT<1500, ])
+print(summary(m.1500), cor = F)
+cbind(summary(m.1500)$coefficients, p.lmer(m.1500)) 
+confint(m.1500, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Lenient Exclusion (50% accuracy)
+# Subset
+nrow(ant.acc50 <- droplevels(ant[ant$Cue!="DOUBLE" & ant$Accuracy==1,]))
+length(unique(ant.acc50$Participant_ID))
+ant.acc50$Sex <- factor(ant.acc50$Sex, levels=c("Female", "Male"))
+(contrasts(ant.acc50$Sex) <- matrix(dimnames=list(levels(ant.acc50$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.acc50$Flanker <- factor(ant.acc50$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.acc50$Flanker) <- matrix(dimnames=list(levels(ant.acc50$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.acc50$Cue <- factor(ant.acc50$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.acc50$Cue) <- matrix(dimnames=list(levels(ant.acc50$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+
+m.acc50 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.acc50)
+print(summary(m.acc50), cor=F)
+cbind(summary(m.acc50)$coefficients, p.lmer(m.acc50)) 
+confint(m.acc50, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Stringent Exclusion (90$ accuracy)
+# Data with at least 90%
+nrow(ant.main[ant.main$AccuracyAtLeast90==1,])
+length(unique(ant.main[ant.main$AccuracyAtLeast90==1,]$Participant_ID))
+
+m.acc90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.main[ant.main$AccuracyAtLeast90==1,])
+print(summary(m.acc90), cor=F)
+cbind(summary(m.acc90)$coefficients, p.lmer(m.acc90)) 
+confint(m.acc90, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Exclusion of extremely old (<90 only)
+# Data with <90
+nrow(ant.main[ant.main$Age<90,])
+length(unique(ant.main[ant.main$Age<90,]$Participant_ID))
+
+m.neo <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                Cue * Flanker +
+                Cue * c.(Age) +
+                Flanker * c.(Age) +
+                Sex + c.(Education) + c.(Trial),
+              ant.main[ant.main$Age<90,])
+print(summary(m.neo), cor=F)
+cbind(summary(m.neo)$coefficients, p.lmer(m.neo))
+confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+```
+
+## Combined Model (Log and Raw RT)
+
+This section has the code for the combined models (Log and Raw RT) i.e. calculating alerting and orienting network using both double and central. This code has been corrected to obtain the correct findings. Point to be noted is that only the Alerting and Executive networks can be estimated using this model
 
 ```{r}
-#| label: Subset data for Linear Mixed Model
+#| label: Subset data for Linear combined Model
 
 # Subset (excluded: participants less than 75% accuracy, incorrect responses - double cue trials are kept)
 ## Data points and n of participants with central and double cues
-nrow(ant.mixed.corrected <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Accuracy==1,]))
-length(unique(ant.mixed.corrected$Participant_ID))
+nrow(ant.combined <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Accuracy==1,]))
+length(unique(ant.combined$Participant_ID))
 # Recode DOUBLE are CENTRAL
-ant.mixed.corrected$Cue <- factor(ant.mixed.corrected$Cue, levels = c("CENTRAL", "DOUBLE", "NOCUE", "SPATIAL"))
-levels(ant.mixed.corrected$Cue)[levels(ant.mixed.corrected$Cue)=="DOUBLE"] <- "CENTRAL"
+ant.combined$Cue <- factor(ant.combined$Cue, levels = c("CENTRAL", "DOUBLE", "NOCUE", "SPATIAL"))
+levels(ant.combined$Cue)[levels(ant.combined$Cue)=="DOUBLE"] <- "CENTRAL"
 # Contrasts (for Sex, Flanker, and Cue)
-ant.mixed.corrected$Sex <- factor(ant.mixed.corrected$Sex, levels=c("Female", "Male"))
-(contrasts(ant.mixed.corrected$Sex) <- matrix(dimnames=list(levels(ant.mixed.corrected$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
-ant.mixed.corrected$Flanker <- factor(ant.mixed.corrected$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
-(contrasts(ant.mixed.corrected$Flanker) <- matrix(dimnames=list(levels(ant.mixed.corrected$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
-ant.mixed.corrected$Cue <- factor(ant.mixed.corrected$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
-(contrasts(ant.mixed.corrected$Cue) <- matrix(dimnames=list(levels(ant.mixed.corrected$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+ant.combined$Sex <- factor(ant.combined$Sex, levels=c("Female", "Male"))
+(contrasts(ant.combined$Sex) <- matrix(dimnames=list(levels(ant.combined$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.combined$Flanker <- factor(ant.combined$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.combined$Flanker) <- matrix(dimnames=list(levels(ant.combined$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.combined$Cue <- factor(ant.combined$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.combined$Cue) <- matrix(dimnames=list(levels(ant.combined$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
 ```
 
 ```{r}
-#| label: Linear Mixed Models and Follow-ups (Log and Raw RT)
+#| label: Linear combined Models and Follow-ups (Log and Raw RT)
 
-# Mixed Model (Log RT)
-m.mixed <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+# Combined Model (Log RT)
+m.combined <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
                    Cue * Flanker +
                    Cue * c.(Age) +
                    Flanker * c.(Age) +
                    Sex + c.(Education) + c.(Trial),
-                 ant.mixed.corrected)
-print(summary(m.mixed), cor=F)
-cbind(summary(m.mixed)$coefficients, p.lmer(m.mixed), confint(m.mixed, parm="beta_"))
+                 ant.combined)
+print(summary(m.combined), cor=F)
+cbind(summary(m.combined)$coefficients, p.lmer(m.combined), confint(m.combined, parm="beta_"))
 
-# Mixed Model (Raw RT)
-m.mixed.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
+# Combined Model (Raw RT)
+m.combined.raw <- lmer(RT ~ (1+Flanker|Participant_ID) +
                    Cue * Flanker +
                    Cue * c.(Age) +
                    Flanker * c.(Age) +
                    Sex + c.(Education) + c.(Trial),
-                 ant.mixed.corrected)
-print(summary(m.mixed.raw), cor=F)
-cbind(summary(m.mixed.raw)$coefficients, p.lmer(m.mixed.raw), confint(m.mixed.raw, parm="beta_"))
+                 ant.combined)
+print(summary(m.combined.raw), cor=F)
+cbind(summary(m.combined.raw)$coefficients, p.lmer(m.combined.raw), confint(m.combined.raw, parm="beta_"))
+```
+
+```{r}
+#| label: Senitivity Analysis for the Combined Linear Model
+
+# Participant Mean log-RT as a Covariate (Random Intercept for this is 0)
+ant.combined$Participant.RT.log <- ave(log(ant.combined$RT), list(ant.combined$Participant_ID), FUN = mean)
+
+m.rt <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c.(Trial) + c.(Participant.RT.log),
+               ant.combined)
+print(summary(m.rt), cor = F)
+cbind(summary(m.rt)$coefficients, p.lmer(m.rt)) 
+confint(m.rt, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# No Covariates
+m.nc <- lmer(log(RT) ~ (1 | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age),
+               ant.combined)
+print(summary(m.nc), cor = F)
+cbind(summary(m.nc)$coefficients, p.lmer(m.nc))
+confint(m.nc, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Visual Acuity as a Covariate
+# n of participants without a valid visual acuity score
+nrow(ant.combined[!is.na(ant.combined$Visual_Acuity), ])
+length(unique(ant.combined[!is.na(ant.combined$Visual_Acuity), ]$Participant_ID))
+
+m.vis <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c. (Trial) + c.(Visual_Acuity),
+               ant.combined[!is.na(ant.combined$Visual_Acuity), ])
+print(summary(m.vis), cor = F)
+cbind(summary(m.vis)$coefficients, p.lmer(m.vis)) 
+confint(m.vis, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1600ms
+# Data below 1600ms
+nrow(ant.combined[ant.combined$RT<1600,])
+
+m.1600 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.combined[ant.combined$RT<1600, ])
+print(summary(m.1600), cor = F)
+cbind(summary(m.1600)$coefficients, p.lmer(m.1600)) 
+confint(m.1600, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1500ms
+# Data below 1500ms
+nrow(ant.combined[ant.combined$RT<1500,])
+
+m.1500 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.combined[ant.combined$RT<1500, ])
+print(summary(m.1500), cor = F)
+cbind(summary(m.1500)$coefficients, p.lmer(m.1500)) 
+confint(m.1500, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Lenient Exclusion (50% accuracy)
+# Subset
+nrow(ant.acc50.combined <- droplevels(ant[ant$Accuracy==1,]))
+length(unique(ant.acc50$Participant_ID))
+ant.acc50.combined$Cue <- factor(ant.acc50.combined$Cue, levels = c("CENTRAL", "DOUBLE", "NOCUE", "SPATIAL"))
+levels(ant.acc50.combined$Cue)[levels(ant.acc50.combined$Cue)=="DOUBLE"] <- "CENTRAL"
+ant.acc50.combined$Sex <- factor(ant.acc50.combined$Sex, levels=c("Female", "Male"))
+(contrasts(ant.acc50.combined$Sex) <- matrix(dimnames=list(levels(ant.acc50.combined$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.acc50.combined$Flanker <- factor(ant.acc50.combined$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.acc50.combined$Flanker) <- matrix(dimnames=list(levels(ant.acc50.combined$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.acc50.combined$Cue <- factor(ant.acc50.combined$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.acc50.combined$Cue) <- matrix(dimnames=list(levels(ant.acc50.combined$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+
+m.acc50 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.acc50.combined)
+print(summary(m.acc50), cor=F)
+cbind(summary(m.acc50)$coefficients, p.lmer(m.acc50)) 
+confint(m.acc50, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Stringent Exclusion (90$ accuracy)
+# Data with at least 90%
+nrow(ant.combined[ant.combined$AccuracyAtLeast90==1,])
+length(unique(ant.combined[ant.combined$AccuracyAtLeast90==1,]$Participant_ID))
+
+m.acc90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.combined[ant.combined$AccuracyAtLeast90==1,])
+print(summary(m.acc90), cor=F)
+cbind(summary(m.acc90)$coefficients, p.lmer(m.acc90)) 
+confint(m.acc90, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Exclusion of extremely old (<90 only)
+# Data with <90
+nrow(ant.combined[ant.combined$Age<90,])
+length(unique(ant.combined[ant.combined$Age<90,]$Participant_ID))
+
+m.neo <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                Cue * Flanker +
+                Cue * c.(Age) +
+                Flanker * c.(Age) +
+                Sex + c.(Education) + c.(Trial),
+              ant.combined[ant.combined$Age<90,])
+print(summary(m.neo), cor=F)
+cbind(summary(m.neo)$coefficients, p.lmer(m.neo))
+confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
 ```
 
 ## Double Model (Log and Raw RT)
@@ -303,6 +547,128 @@ cbind(summary(m.double.raw)$coefficients, p.lmer(m.double.raw), confint(m.double
 
 ```
 
+```{r}
+#| label: Senitivity Analysis for the Double Linear Model
+
+# Participant Mean log-RT as a Covariate (Random Intercept for this is 0)
+ant.double$Participant.RT.log <- ave(log(ant.double$RT), list(ant.double$Participant_ID), FUN = mean)
+
+m.rt <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c.(Trial) + c.(Participant.RT.log),
+               ant.double)
+print(summary(m.rt), cor = F)
+cbind(summary(m.rt)$coefficients, p.lmer(m.rt)) 
+confint(m.rt, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# No Covariates
+m.nc <- lmer(log(RT) ~ (1 | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age),
+               ant.double)
+print(summary(m.nc), cor = F)
+cbind(summary(m.nc)$coefficients, p.lmer(m.nc))
+confint(m.nc, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Visual Acuity as a Covariate
+# n of participants without a valid visual acuity score
+nrow(ant.double[!is.na(ant.double$Visual_Acuity), ])
+length(unique(ant.double[!is.na(ant.double$Visual_Acuity), ]$Participant_ID))
+
+m.vis <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+               Cue * Flanker +
+               Cue * c.(Age) +
+               Flanker * c.(Age) +
+               Sex + c.(Education) + c. (Trial) + c.(Visual_Acuity),
+               ant.double[!is.na(ant.double$Visual_Acuity), ])
+print(summary(m.vis), cor = F)
+cbind(summary(m.vis)$coefficients, p.lmer(m.vis)) 
+confint(m.vis, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1600ms
+# Data below 1600ms
+nrow(ant.double[ant.double$RT<1600,])
+
+m.1600 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.double[ant.double$RT<1600, ])
+print(summary(m.1600), cor = F)
+cbind(summary(m.1600)$coefficients, p.lmer(m.1600)) 
+confint(m.1600, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Responses Faster than 1500ms
+# Data below 1500ms
+nrow(ant.double[ant.double$RT<1500,])
+
+m.1500 <- lmer(log(RT) ~ (1 + Flanker | Participant_ID) +
+                 Cue * Flanker +
+                 Cue * c.(Age) +
+                 Flanker * c.(Age) +
+                 Sex + c.(Education) + c.(Trial),
+               ant.double[ant.double$RT<1500, ])
+print(summary(m.1500), cor = F)
+cbind(summary(m.1500)$coefficients, p.lmer(m.1500)) 
+confint(m.1500, parm = c("Cue.ALERTING:C.(Age)","Cue.ORIENTING:C.(Age)", "Cue.EXECUTIVE:C.(Age)"))
+
+# Lenient Exclusion (50% accuracy)
+# Subset
+nrow(ant.acc50.double <- droplevels(ant[ant$Cue!="CENTRAL" & ant$Accuracy==1,]))
+length(unique(ant.acc50$Participant_ID))
+ant.acc50.double$Sex <- factor(ant.acc50.double$Sex, levels=c("Female", "Male"))
+(contrasts(ant.acc50.double$Sex) <- matrix(dimnames=list(levels(ant.acc50.double$Sex), c(".ME")), c(-0.5, 0.5), nrow=2))
+ant.acc50.double$Flanker <- factor(ant.acc50.double$Flanker, levels=c("CONGRUENT", "INCONGRUENT"))
+(contrasts(ant.acc50.double$Flanker) <- matrix(dimnames=list(levels(ant.acc50.double$Flanker), c(".EXECUTIVE")), c(-0.5, 0.5), nrow=2))
+ant.acc50.double$Cue <- factor(ant.acc50.double$Cue, levels=c("CENTRAL", "NOCUE", "SPATIAL"))
+(contrasts(ant.acc50.double$Cue) <- matrix(dimnames=list(levels(ant.acc50.double$Cue), c(".ALERTING", ".ORIENTING")), c(-1/3, 2/3, -1/3, 1/3, 1/3, -2/3), nrow=3))
+
+m.acc50 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.acc50.double)
+print(summary(m.acc50), cor=F)
+cbind(summary(m.acc50)$coefficients, p.lmer(m.acc50)) 
+confint(m.acc50, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Stringent Exclusion (90$ accuracy)
+# Data with at least 90%
+nrow(ant.double[ant.double$AccuracyAtLeast90==1,])
+length(unique(ant.double[ant.double$AccuracyAtLeast90==1,]$Participant_ID))
+
+m.acc90 <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * c.(Age) +
+                  Flanker * c.(Age) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.double[ant.double$AccuracyAtLeast90==1,])
+print(summary(m.acc90), cor=F)
+cbind(summary(m.acc90)$coefficients, p.lmer(m.acc90)) 
+confint(m.acc90, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+# Exclusion of extremely old (<90 only)
+# Data with <90
+nrow(ant.double[ant.double$Age<90,])
+length(unique(ant.double[ant.double$Age<90,]$Participant_ID))
+
+m.neo <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                Cue * Flanker +
+                Cue * c.(Age) +
+                Flanker * c.(Age) +
+                Sex + c.(Education) + c.(Trial),
+              ant.double[ant.double$Age<90,])
+print(summary(m.neo), cor=F)
+cbind(summary(m.neo)$coefficients, p.lmer(m.neo))
+confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
+
+```
+
 ## Quadratic Model
 
 The following code produces the reproduction of the quadratic main model as well as the alternate models with quadratic terms
@@ -344,26 +710,26 @@ cbind(summary(m.quad.double)$coefficients, p.lmer(m.quad.double))
 confint(m.quad.double, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
 
 # combined model (log RT)
-m.quad.mixed <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+m.quad.combined <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
                  Cue * Flanker +
                  Cue * poly(c.(Age), 2) +
                  Flanker * poly(c.(Age), 2) +
                  Sex + c.(Education) + c.(Trial),
-               ant.mixed.corrected)
-print(summary(m.quad.mixed), cor=F)
-cbind(summary(m.quad.mixed)$coefficients, p.lmer(m.quad.mixed))
-confint(m.quad.mixed, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
+               ant.combined.corrected)
+print(summary(m.quad.combined), cor=F)
+cbind(summary(m.quad.combined)$coefficients, p.lmer(m.quad.combined))
+confint(m.quad.combined, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING:poly(c.(Age), 2)2", "Flanker.EXECUTIVE:poly(c.(Age), 2)2"))
 
 ```
 
-## Breakpoint Model
+## Bi-Linear Model
 
-The following code is for the reproduction of the breakpoint model
+The following code is for the reproduction of the Bi-Linear model
 
 ```{r}
-#| label: Breakpoint Model (Log and Raw RT) 
+#| label: Bilinear Model (Log and Raw RT) 
 
-# Discovery of best breakpoint (Log RT)
+# Main Modle (Log RT)
 # (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
 models.fit <- NULL
 
@@ -413,7 +779,7 @@ ggplot(models.fit, aes(x = Breakpoint, y = deltaAIC)) +
     ) +
     theme_classic()
 
-# Discovery of best breakpoint (Raw RT)
+# Main Model (Raw RT)
 # (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
 models.fit.raw <- NULL
 
@@ -460,6 +826,106 @@ ggplot(models.fit.raw, aes(x = Breakpoint, y = deltaAIC)) +
         x = "Age Breakpoint",
         y = expression(Delta*AIC),
         title = "Breakpoint (Raw RT) Search Using AIC"
+    ) +
+    theme_classic()
+
+# Double Model
+# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
+models.double.fit <- NULL
+
+for(bp.d in seq(min(ant.double$Age), max(ant.double$Age), 1)){
+  ant.double$adj.Age <- ant.double$Age - bp.d
+  ant.double$post.bp.d <- as.numeric(ant.double$adj.Age>0)
+  m.current.double <- lmer(log(RT) ~ (1|Participant_ID) +
+                      Cue * Flanker +
+                      Cue * (adj.Age + adj.Age:post.bp.d) +
+                      Flanker * (adj.Age + adj.Age:post.bp.d) +
+                      Sex + c.(Education) + c.(Trial),
+                    ant.double, REML=F)
+  m.current.double.fit <- data.frame(Breakpoint=bp.d, Deviance=deviance(m.current.double, REML=F), AIC=AIC(m.current.double))
+models.double.fit <- rbind(models.double.fit, m.current.double.fit)}
+
+# Best breakpoint
+models.double.fit[models.double.fit$AIC==min(models.double.fit$AIC),]
+bp.d <- models.double.fit[models.double.fit$AIC==min(models.double.fit$AIC),]$Breakpoint
+
+# Make indicator variable
+ant.double$adj.Age <- ant.double$Age - bp.d
+ant.double$post.bp.d <- as.numeric(ant.double$adj.Age>0)
+
+# Model
+m.break.double <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * (adj.Age + adj.Age:post.bp.d) +
+                  Flanker * (adj.Age + adj.Age:post.bp.d) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.double)
+print(summary(m.break.double), cor=F)
+cbind(summary(m.break.double)$coefficients, p.lmer(m.break.double))
+confint(m.break.double, parm=c("Cue.ALERTING:adj.Age:post.bp", "Cue.ORIENTING:adj.Age:post.bp", "Flanker.EXECUTIVE:adj.Age:post.bp",
+                        "Flanker.EXECUTIVE:adj.Age"))
+
+# Figure showing Breakpoint Search
+models.double.fit$deltaAIC <- models.double.fit$AIC - min(models.double.fit$AIC)
+
+ggplot(models.double.fit, aes(x = Breakpoint, y = deltaAIC)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_vline(xintercept = bp.d, linetype = "dotted", linewidth = 0.8) +
+    labs(
+        x = "Age Breakpoint",
+        y = expression(Delta*AIC),
+        title = "Breakpoint Double (Log RT) Search Using AIC"
+    ) +
+    theme_classic()
+
+# Combined Model
+# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
+models.combined.fit <- NULL
+
+for(bp.c in seq(min(ant.combined$Age), max(ant.combined$Age), 1)){
+  ant.combined$adj.Age <- ant.combined$Age - bp.c
+  ant.combined$post.bp.c <- as.numeric(ant.combined$adj.Age>0)
+  m.current.combined <- lmer(log(RT) ~ (1|Participant_ID) +
+                      Cue * Flanker +
+                      Cue * (adj.Age + adj.Age:post.bp.c) +
+                      Flanker * (adj.Age + adj.Age:post.bp.c) +
+                      Sex + c.(Education) + c.(Trial),
+                    ant.combined, REML=F)
+  m.current.combined.fit <- data.frame(Breakpoint=bp.c, Deviance=deviance(m.current.combined, REML=F), AIC=AIC(m.current.combined))
+models.combined.fit <- rbind(models.combined.fit, m.current.combined.fit)}
+
+# Best breakpoint
+models.combined.fit[models.combined.fit$AIC==min(models.combined.fit$AIC),]
+bp.c <- models.combined.fit[models.combined.fit$AIC==min(models.combined.fit$AIC),]$Breakpoint
+
+# Make indicator variable
+ant.combined$adj.Age <- ant.combined$Age - bp.c
+ant.combined$post.bp.c <- as.numeric(ant.combined$adj.Age>0)
+
+# Model
+m.break.combined <- lmer(log(RT) ~ (1+Flanker|Participant_ID) +
+                  Cue * Flanker +
+                  Cue * (adj.Age + adj.Age:post.bp.c) +
+                  Flanker * (adj.Age + adj.Age:post.bp.c) +
+                  Sex + c.(Education) + c.(Trial),
+                ant.combined)
+print(summary(m.break.combined), cor=F)
+cbind(summary(m.break.combined)$coefficients, p.lmer(m.break.combined))
+confint(m.break.combined, parm=c("Cue.ALERTING:adj.Age:post.bp", "Cue.ORIENTING:adj.Age:post.bp", "Flanker.EXECUTIVE:adj.Age:post.bp",
+                        "Flanker.EXECUTIVE:adj.Age"))
+
+# Figure showing Breakpoint Search
+models.combined.fit$deltaAIC <- models.combined.fit$AIC - min(models.combined.fit$AIC)
+
+ggplot(models.combined.fit, aes(x = Breakpoint, y = deltaAIC)) +
+    geom_line(linewidth = 1) +
+    geom_point(size = 2) +
+    geom_vline(xintercept = bp.c, linetype = "dotted", linewidth = 0.8) +
+    labs(
+        x = "Age Breakpoint",
+        y = expression(Delta*AIC),
+        title = "Breakpoint combined (Log RT) Search Using AIC"
     ) +
     theme_classic()
 ```
