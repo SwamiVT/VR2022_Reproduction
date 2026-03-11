@@ -14,7 +14,7 @@ This file has all the code for the reproduction and further testing for Veríssi
 ```{r}
 #| label: Package, Data and Seed information
 
-library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr)
+library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr); library(corrplot)
 
 set.seed(1996)
 
@@ -1173,4 +1173,346 @@ orient_gutt_random <- orient_score_random |>
   pivot_wider(names_from = split, values_from = Orient_Net)
 orient.corr.random <- cor(orient_gutt_random$A, orient_gutt_random$B, use = "complete.obs")
 orient.gutt.coef.random <- splitHalf(orient_gutt_random[, c("A", "B")])
+```
+
+# Correlation
+```{r}
+#| label: Network Measure and Age Correlations
+
+# Conflict
+con.corr.m <- ant.main |>
+  group_by(Participant_ID, Flanker) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Con_M" := RT[Flanker == "INCONGRUENT"] - 
+              RT[Flanker == "CONGRUENT"])
+con.corr.d <- ant.double |>
+  group_by(Participant_ID, Flanker) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Con_D" := RT[Flanker == "INCONGRUENT"] - 
+              RT[Flanker == "CONGRUENT"])
+con.corr.c <- ant.combined |>
+  group_by(Participant_ID, Flanker) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Con_C" := RT[Flanker == "INCONGRUENT"] - 
+              RT[Flanker == "CONGRUENT"])
+con.corr.all <- left_join(con.corr.m, con.corr.d, by = "Participant_ID") |> 
+  left_join(con.corr.c, by = "Participant_ID")
+
+# Alerting
+alert.corr.m <- ant.main |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Alt_M" := RT[Cue == "NOCUE"] - 
+              RT[Cue == "CENTRAL"])
+alert.corr.d <- ant.double |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Alt_D" := RT[Cue == "NOCUE"] - 
+              RT[Cue == "DOUBLE"])
+alert.corr.c <- ant.combined |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Alt_C" := RT[Cue == "NOCUE"] - 
+              RT[Cue == "CENTRAL"])
+alert.corr.all <- left_join(alert.corr.m, alert.corr.d, by = "Participant_ID") |> 
+  left_join(alert.corr.c, by = "Participant_ID")
+
+# Orienting
+orient.corr.m <- ant.main |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Ori_M" := RT[Cue == "CENTRAL"] - 
+              RT[Cue == "SPATIAL"])
+orient.corr.d <- ant.double |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Ori_D" := RT[Cue == "DOUBLE"] - 
+              RT[Cue == "SPATIAL"])
+orient.corr.c <- ant.combined |>
+  group_by(Participant_ID, Cue) |>
+  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
+  group_by(Participant_ID) |>
+  summarise("Ori_C" := RT[Cue == "CENTRAL"] - 
+              RT[Cue == "SPATIAL"])
+orient.corr.all <- left_join(orient.corr.m, orient.corr.d, by = "Participant_ID") |> 
+  left_join(orient.corr.c, by = "Participant_ID")
+
+# Age
+ant.age <- ant.main
+ant.age <- subset(ant.age, select = c("Participant_ID", "Age"))
+ant.age <- unique(ant.age)
+
+net.corr <- left_join(alert.corr.all, orient.corr.all, by = "Participant_ID") |>
+  left_join(con.corr.all, by = "Participant_ID") |> left_join(ant.age, by = "Participant_ID")
+
+measure.age.cor <- corr.test(net.corr[, -1], 
+                        use = "pairwise", 
+                        method = "pearson", 
+                        adjust = "holm",
+                        ci = TRUE)
+measure.corr.table <- cbind(measure.age.cor$r, measure.age.cor$n, measure.age.cor$p)
+colnames(measure.corr.table) <- c(colnames(measure.age.cor$r), "n", colnames(measure.age.cor$p))
+
+corrplot(measure.age.cor$r, method = "number", 
+         type = "upper", order = "hclust",
+         addCoef.col = "black", tl.col = "black",
+         tl.srt = 45, p.mat = measure.age.cor$p, 
+         sig.level = c(.001, .01, .05), insig = "label_sig")
+corrplot(measure.age.cor$r, method = "number", 
+         type = "upper", order = "hclust",
+         addCoef.col = "black", tl.col = "black",
+         tl.srt = 45, p.mat = measure.age.cor$p, number.digits = 3)
+```
+
+# Figures
+
+```{r}
+#| label: Plots log-RT (Subsetting and Plots) for direct comparison
+
+# Main Model
+## Alerting 
+ant.alert.main <- droplevels(ant.main[ant.main$Cue != "SPATIAL",])
+ant.alert <- ant.alert.main |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.alert <- ant.alert |> 
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.alert <- ant.alert |>
+  mutate(difference = log(NOCUE) - log(CENTRAL))
+alert.age <- ant.alert.main |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.alert <- ant.alert |>
+  left_join(alert.age, by = "Participant_ID")
+## Orienting Model
+ant.orient.main <- droplevels(ant.main[ant.main$Cue != "NOCUE",])
+ant.orient <- ant.orient.main |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE, .groups = "drop"))
+ant.orient <- ant.orient |>
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.orient <- ant.orient |>
+  mutate(difference = log(CENTRAL) - log(SPATIAL))
+orient.age <- ant.orient.main |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.orient <- ant.orient |>
+  left_join(orient.age, by = "Participant_ID")
+## Executive Model
+ant.exec.main <- ant.main|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec <- ant.exec.main |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec <- ant.exec |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age <- ant.main |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec <- ant.exec |>
+  left_join(exec.age, by = "Participant_ID")
+
+# Combined Model
+## Alerting
+ant.alert.combined <- droplevels(ant.combined[ant.combined$Cue != "SPATIAL",])
+ant.alert.c <- ant.alert.combined |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.alert.c <- ant.alert.c |> 
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.alert.c <- ant.alert.c |>
+  mutate(difference = log(NOCUE) - log(CENTRAL))
+alert.age.c <- ant.alert.combined |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.alert.c <- ant.alert.c |>
+  left_join(alert.age.c, by = "Participant_ID")
+#Orienting combined Model
+ant.orient.combined <- droplevels(ant.combined[ant.combined$Cue != "NOCUE",])
+ant.orient.c <- ant.orient.combined |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE, .groups = "drop"))
+ant.orient.c <- ant.orient.c |>
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.orient.c <- ant.orient.c |>
+  mutate(difference = log(CENTRAL) - log(SPATIAL))
+orient.age.c <- ant.orient.combined |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.orient.c <- ant.orient.c |>
+  left_join(orient.age.c, by = "Participant_ID")
+#Executive combined Model
+ant.exec.combined <- ant.combined|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec.c <- ant.exec.combined |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec.c <- ant.exec.c |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age.c <- ant.combined |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec.c <- ant.exec.c |>
+  left_join(exec.age.c, by = "Participant_ID")
+
+# Double Model
+## Alerting 
+ant.alert.double <- droplevels(ant.double[ant.double$Cue != "SPATIAL",])
+ant.alert.d <- ant.alert.double |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.alert.d <- ant.alert.d |> 
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.alert.d <- ant.alert.d |>
+  mutate(difference = log(NOCUE) - log(DOUBLE))
+alert.age.d <- ant.alert.double |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.alert.d <- ant.alert.d |>
+  left_join(alert.age.d, by = "Participant_ID")
+## Orienting 
+ant.orient.double <- droplevels(ant.double[ant.double$Cue != "NOCUE",])
+ant.orient.d <- ant.orient.double |> group_by(Participant_ID, Cue) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE, .groups = "drop"))
+ant.orient.d <- ant.orient.d |>
+  pivot_wider(names_from = Cue, values_from = Mean_RT)
+ant.orient.d <- ant.orient.d |>
+  mutate(difference = log(DOUBLE) - log(SPATIAL))
+orient.age.d <- ant.orient.double |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.orient.d <- ant.orient.d |>
+  left_join(orient.age.d, by = "Participant_ID")
+## Executive 
+ant.exec.double <- ant.double|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec.d <- ant.exec.double |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec.d <- ant.exec.d |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age.d <- ant.double |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec.d <- ant.exec.d |>
+  left_join(exec.age.d, by = "Participant_ID")
+
+# Alerting Plot
+plot_alerting<- ggplot() +
+  geom_point(data = ant.alert, aes(Age, difference, color = "Central"), alpha = 0.02) + 
+  geom_smooth(data = ant.alert, aes(Age, difference, color = "Central"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.alert.c, aes(Age, difference, color = "Combined"), alpha = 0.02) + 
+  geom_smooth(data = ant.alert.c, aes(Age, difference, color = "Combined"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.alert.d, aes(Age, difference, color = "Double"), alpha = 0.02) + 
+  geom_smooth(data = ant.alert.d, aes(Age, difference, color = "Double"), method = "lm", se = FALSE) + 
+  scale_y_continuous(limits = c(-0.4, 0.4)) +
+  scale_color_npg(name = "Baseline") +
+  labs(
+    title = "Age Interaction with Alerting",
+    x = "Age (years)",
+    y = "log-RT difference",
+    color = "Group"
+  ) +
+    theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
+        plot.caption = element_text(hjust = 1, size = rel(0.8), color = "grey50"),
+        axis.title = element_text(face = "bold", size = rel(1)),
+        axis.text = element_text(color = "black", size = rel(0.9)),
+        axis.line = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks.length = unit(0.2, "mm"),
+        legend.title = element_text(size = rel(1), face = "bold"),
+        legend.text = element_text(size = rel(0.9)),
+        legend.key.size = unit(0.8, "cm"),
+        legend.position = "top",
+        legend.margin = margin(0, 0, 0, 0),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_blank(),
+        panel.background = element_blank())  
+
+# Orienting Plot
+plot_orienting<- ggplot() +
+  geom_point(data = ant.orient, aes(Age, difference, color = "Central"), alpha = 0.02) + 
+  geom_smooth(data = ant.orient, aes(Age, difference, color = "Central"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.orient.c, aes(Age, difference, color = "Combined"), alpha = 0.02) + 
+  geom_smooth(data = ant.orient.c, aes(Age, difference, color = "Combined"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.orient.d, aes(Age, difference, color = "Double"), alpha = 0.02) + 
+  geom_smooth(data = ant.orient.d, aes(Age, difference, color = "Double"), method = "lm", se = FALSE) +
+  scale_y_continuous(limits = c(-0.25, 0.25)) +
+  scale_color_npg(name = "Baseline") +
+  labs(
+    title = "Age Intercation with Orienting",
+    x = "Age (years)",
+    y = "log-RT difference",
+    color = "Group"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
+        plot.caption = element_text(hjust = 1, size = rel(0.8), color = "grey50"),
+        axis.title = element_text(face = "bold", size = rel(1)),
+        axis.text = element_text(color = "black", size = rel(0.9)),
+        axis.line = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks.length = unit(0.2, "mm"),
+        legend.title = element_text(size = rel(1), face = "bold"),
+        legend.text = element_text(size = rel(0.9)),
+        legend.key.size = unit(0.8, "cm"),
+        legend.position = "top",
+        legend.margin = margin(0, 0, 0, 0),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_blank(),
+        panel.background = element_blank()) 
+
+lm_central <- lm(difference ~ Age, data = ant.orient.c)
+end_age <- max(ant.orient.c$Age)
+end_pred <- predict(lm_central, newdata = data.frame(Age = end_age))
+
+plot_orienting <- plot_orienting +
+  annotate("text", 
+           x = end_age + 0.1,        
+           y = end_pred + 0.006,            
+           label = "***", 
+           color = "#E64B35",
+           size = 4, fontface = "bold", hjust = 0)  
+
+# Conflict Plot
+plot_executive<- ggplot() +
+  geom_point(data = ant.exec, aes(Age, difference, color = "Central"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec, aes(Age, difference, color = "Central"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.exec.c, aes(Age, difference, color = "Combined"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec.c, aes(Age, difference, color = "Combined"), method = "lm", se = FALSE) + 
+  geom_point(data = ant.exec.d, aes(Age, difference, color = "Double"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec.d, aes(Age, difference, color = "Double"), method = "lm", se = FALSE) +
+  scale_y_continuous(limits = c(-0.3, 0.3)) +
+  scale_color_npg(name = "Baseline") +
+  labs(
+    title = "Age Interaction with Conflict Avoidance",
+    x = "Age (years)",
+    y = "log-RT difference",
+    color = "Group"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
+        plot.caption = element_text(hjust = 1, size = rel(0.8), color = "grey50"),
+        axis.title = element_text(face = "bold", size = rel(1)),
+        axis.text = element_text(color = "black", size = rel(0.9)),
+        axis.line = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks.length = unit(0.2, "mm"),
+        legend.title = element_text(size = rel(1), face = "bold"),
+        legend.text = element_text(size = rel(0.9)),
+        legend.key.size = unit(0.8, "cm"),
+        legend.position = "top",
+        legend.margin = margin(0, 0, 0, 0),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_blank(),
+        panel.background = element_blank()) 
+
+
+ggsave("Orienting_x_Age.tiff", plot_orienting, 
+       width = 180, height = 240, units = "mm", 
+       dpi = 600, compression = "lzw", bg = "white")
 ```
