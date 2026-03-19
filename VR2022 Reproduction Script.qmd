@@ -1433,19 +1433,20 @@ plot_alerting<- ggplot() +
 
 # Orienting Plot
 plot_orienting<- ggplot() +
-  geom_point(data = ant.orient, aes(Age, difference, color = "Central"), alpha = 0.02) + 
+  geom_point(data = ant.orient, aes(Age, difference, color = "Central"), alpha = 0.05) + 
   geom_smooth(data = ant.orient, aes(Age, difference, color = "Central"), method = "lm", se = FALSE) + 
-  geom_point(data = ant.orient.c, aes(Age, difference, color = "Combined"), alpha = 0.02) + 
+  geom_point(data = ant.orient.c, aes(Age, difference, color = "Combined"), alpha = 0.05) + 
   geom_smooth(data = ant.orient.c, aes(Age, difference, color = "Combined"), method = "lm", se = FALSE) + 
-  geom_point(data = ant.orient.d, aes(Age, difference, color = "Double"), alpha = 0.02) + 
+  geom_point(data = ant.orient.d, aes(Age, difference, color = "Double"), alpha = 0.05) + 
   geom_smooth(data = ant.orient.d, aes(Age, difference, color = "Double"), method = "lm", se = FALSE) +
   scale_y_continuous(limits = c(-0.25, 0.25)) +
   scale_color_npg(name = "Baseline") +
   labs(
-    title = "Age Intercation with Orienting",
+    title = "Orienting",
     x = "Age (years)",
     y = "log-RT difference",
-    color = "Group"
+    color = "Group",
+    caption = "Central baseline is significant at p < .001"
   ) +
   theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
@@ -1454,16 +1455,18 @@ plot_orienting<- ggplot() +
         axis.text = element_text(color = "black", size = rel(0.9)),
         axis.line = element_line(linewidth = 0.5, color = "black"),
         axis.ticks = element_line(linewidth = 0.5, color = "black"),
-        axis.ticks.length = unit(0.2, "mm"),
+        axis.ticks.length = unit(2, "mm"),
         legend.title = element_text(size = rel(1), face = "bold"),
         legend.text = element_text(size = rel(0.9)),
         legend.key.size = unit(0.8, "cm"),
-        legend.position = "top",
-        legend.margin = margin(0, 0, 0, 0),
+        legend.position = c(0.9, 0.9),
+        legend.margin = margin(2, 2, 2, 2),
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
-        panel.background = element_blank()) 
+        plot.margin = margin(5, 10, 5, 5, "pt"),
+        panel.background = element_blank()) + 
+  coord_cartesian(clip = "off")
 
 lm_central <- lm(difference ~ Age, data = ant.orient.c)
 end_age <- max(ant.orient.c$Age)
@@ -1509,10 +1512,11 @@ plot_executive<- ggplot() +
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
+        plot.margin = margin(5, 10, 5, 5, "pt"),
         panel.background = element_blank()) 
 
 
 ggsave("Orienting_x_Age.tiff", plot_orienting, 
-       width = 180, height = 240, units = "mm", 
+       width = 180, height = 220, units = "mm", 
        dpi = 600, compression = "lzw", bg = "white")
 ```
