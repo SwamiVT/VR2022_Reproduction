@@ -9,7 +9,7 @@ editor: visual
 
 # Loading of Data/Packages
 
-This file has all the code for the reproduction and further testing for Veríssimo et. al. (2022) The chunk below loads the packages used and the data as well.
+This file has all the code for the reproduction and further testing for @veríssimo2022 The chunk below loads the packages used and the data as well.
 
 ```{r}
 #| label: Package, Data and Seed information
@@ -47,12 +47,9 @@ p.lmer <- function(model){
 
 ## Central Baseline Models (For Log and Raw RTs)
 
-The code for the reproduction of the central baseline model, this is the model that is used by Veríssimo et al. 2022 for their linear analysis. This model uses the central cue as the baseline, the double cue is thus removed in the sub-setting phase.
+The code for the reproduction of the central baseline model, this is the model that is used by @veríssimo2022 for their linear analysis. This model uses the central cue as the baseline, the double cue is thus removed in the sub-setting phase.
 
-The three measures are defined as follow, note that Alerting and Orienting use cues for their calculation while Conflict uses flankers 
-$$Alerting = NoCue - Central$$
-$$Orienting = Central - Spatial$$
-$$Executive = Incongruent - Congruent$$
+The three measures are calculated as follows, note that Alerting and Orienting use cues for their calculation while Conflict uses flankers $$Alerting = NoCue - Central$$ $$Orienting = Central - Spatial$$ $$Conflict = Incongruent - Congruent$$
 
 ```{r}
 #| label: Subset data for linear modelling (main model)
@@ -338,9 +335,9 @@ cbind(summary(m.neo)$coefficients, p.lmer(m.neo))
 confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
 ```
 
-## Combined Model (Log and Raw RT)
+## Combined Baseline (Log and Raw RT)
 
-This section has the code for the combined models (Log and Raw RT) i.e. calculating alerting and orienting network using both double and central. This code has been corrected to obtain the correct findings. Point to be noted is that only the Alerting and Executive networks can be estimated using this model
+This section is for the combined baseline models (Log and Raw RT). In this case the central cue and double cue have been combined, by the way of re-coding double as central. This code had to be corrected in order to obtain reported findings. Note the mistake was in the subset part of this section related to the re-coding of the cues. Another point to be noted is that @veríssimo2022 state that this model is only applicable for alerting and conflict measures. $$Alerting = NoCue - Combined$$ $$Orienting = Combined - Spatial$$ $$Conflict = Incongruent - Congruent$$
 
 ```{r}
 #| label: Subset data for Linear combined Model
@@ -508,9 +505,9 @@ cbind(summary(m.neo)$coefficients, p.lmer(m.neo))
 confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.EXECUTIVE:c.(Age)"))
 ```
 
-## Double Model (Log and Raw RT)
+## Double Baseline (Log and Raw RT)
 
-The section has the code for the reproduction of the double models i.e. calculation of alerting and orienting network is done with double cues rather than central cues.
+The code for the double baseline models are in the following blocks. In these models the central cue was substituted with the double cue instead. Although @veríssimo2022 have not applied this baseline in their study, this is the recommended baseline by @fan2009, whom @veríssimo2022 base their ANT paradigm on.$$Alerting = NoCue - Double$$ $$Orienting = Double - Spatial$$ $$Conflict = Incongruent - Congruent$$
 
 ```{r}
 #| label: Subset data for Linear Double Model
@@ -676,7 +673,7 @@ confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.
 
 ## Quadratic Model
 
-The following code produces the reproduction of the quadratic main model as well as the alternate models with quadratic terms
+This section holds the code for the replication and the robustness for the quadratic model used by @veríssimo2022. Please view the supplementary for more information about the model, but in short a quadratic term is added to age in order to explain their effects further.
 
 ```{r}
 #| label: Quadratic Models
@@ -729,7 +726,7 @@ confint(m.quad.combined, parm=c("Cue.ALERTING:poly(c.(Age), 2)2", "Cue.ORIENTING
 
 ## Bi-Linear Model
 
-The following code is for the reproduction of the Bi-Linear model
+This model is known as the breakpoint model in @veríssimo2022. The code is present for all three baselines along with the figure with the AIC plot.
 
 ```{r}
 #| label: Bilinear Model (Log and Raw RT) 
@@ -937,7 +934,7 @@ ggplot(models.combined.fit, aes(x = Breakpoint, y = deltaAIC)) +
 
 # Reliability
 
-For the purposes of reliability we have chosen Spearman Brown Intraclass Correlation Coefficient (S-B) and Guttman. Which are the two most popular reliability measures in ANT literature. Both are split-half and S-B is run with 10000 permutations as in literature prior.
+For the purposes of reliability we have chosen Spearman Brown Intraclass Correlation Coefficient (S-B). This has been run as a split-half with 10000 permutations as done by prior literature [@ishigami2013]
 
 ```{r}
 #| label: Multi Permutation Correlation Reliability ICC
@@ -1114,8 +1111,10 @@ hist(alert_d_corrs,
 
 # Correlation
 
+For the sake of completeness we have added the correlation between the different ANT measures and the Age. This is done in an attempt to learn the relationship between the measures when calculated with different baselines.
+
 ```{r}
-#| label: Network Measure and Age Correlations
+#| label: ANT Measure and Age Correlations
 
 # Conflict
 con.corr.m <- ant.main |>
@@ -1211,6 +1210,8 @@ corrplot(measure.age.cor$r, method = "number",
 ```
 
 # Figures
+
+@veríssimo2022 have not provided the code to reproduce their figures. We have created approximations for them. The code required to reproduce our figure is also provided in the code block.
 
 ```{r}
 #| label: Figures for easy comparison
