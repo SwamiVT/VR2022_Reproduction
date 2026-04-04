@@ -45,9 +45,14 @@ p.lmer <- function(model){
 
 # Models
 
-## Main Models (For Log and Raw RTs)
+## Central Baseline Models (For Log and Raw RTs)
 
-The code for the reproduction of the main model (both log RT and Raw RT) and the age gated analysis is provided in this section.
+The code for the reproduction of the central baseline model, this is the model that is used by Veríssimo et al. 2022 for their linear analysis. This model uses the central cue as the baseline, the double cue is thus removed in the sub-setting phase.
+
+The three measures are defined as follow, note that Alerting and Orienting use cues for their calculation while Conflict uses flankers 
+$$Alerting = NoCue - Central$$
+$$Orienting = Central - Spatial$$
+$$Executive = Incongruent - Congruent$$
 
 ```{r}
 #| label: Subset data for linear modelling (main model)
@@ -340,7 +345,7 @@ This section has the code for the combined models (Log and Raw RT) i.e. calculat
 ```{r}
 #| label: Subset data for Linear combined Model
 
-# Subset (excluded: participants less than 75% accuracy, incorrect responses - double cue trials are kept)
+# Subset (excluded: participants less than 75% accuracy, incorrect responses)
 ## Data points and n of participants with central and double cues
 nrow(ant.combined <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Accuracy==1,]))
 length(unique(ant.combined$Participant_ID))
@@ -1107,75 +1112,8 @@ hist(alert_d_corrs,
      xlab = "Correlation")
 ```
 
-```{r}
-#| label: Guttman Split Half Reliability
-
-set.seed(1996)
-ant_gutt_random <- droplevels(ant[ant$AccuracyAtLeast75==1 & ant$Accuracy==1,]) |>
-  group_by(Participant_ID) |>
-  mutate(split = sample(rep(c("A", "B"), length.out = n()))) |>
-  ungroup()
-
-# ANT network 
-## Conflict (random)
-exec_score_random <- ant_gutt_random |>
-  group_by(Participant_ID, split, Flanker) |>
-  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop") |>
-  group_by(Participant_ID, split) |>
-  summarise(Exec_Net = RT[Flanker == "INCONGRUENT"] - 
-              RT[Flanker == "CONGRUENT"])
-exec_gutt_random <- exec_score_random |>
-  select(Participant_ID, split, Exec_Net) |>
-  pivot_wider(names_from = split, values_from = Exec_Net)
-exec.corr.random <- cor(exec_gutt_random$A, exec_gutt_random$B, use = "complete.obs")
-exec.gutt.coef.random <- splitHalf(exec_gutt_random[, c("A", "B")])
-
-## Alerting (main model)
-alert_score_random <- ant_gutt_random |>
-  group_by(Participant_ID, split, Cue) |>
-  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop")
-alert_score_random <- droplevels(alert_score_random[alert_score_random$Cue != "SPATIAL" & alert_score_random$Cue != "DOUBLE",])
-alert_score_random <- alert_score_random |>
-  group_by(Participant_ID, split) |>
-  summarise(Alert_Net = RT[Cue == "NOCUE"] -
-              RT[Cue == "CENTRAL"], .groups = "drop")
-alert_gutt_random <- alert_score_random |>
-  select(Participant_ID, split, Alert_Net) |>
-  pivot_wider(names_from = split, values_from = Alert_Net)
-alert.corr.random <- cor(alert_gutt_random$A, alert_gutt_random$B, use = "complete.obs")
-alert.gutt.coef.random <- splitHalf(alert_gutt_random[, c("A", "B")])
-
-### Alerting (double model)
-alert_score_D_random <- ant_gutt_random |>
-  group_by(Participant_ID, split, Cue) |>
-  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop")
-alert_score_D_random <- droplevels(alert_score_D_random[alert_score_D_random$Cue != "SPATIAL" & alert_score_D_random$Cue != "CENTRAL",])
-alert_score_D_random <- alert_score_D_random |>
-  group_by(Participant_ID, split) |>
-  summarise(Alert_Net = RT[Cue == "NOCUE"] -
-              RT[Cue == "DOUBLE"], .groups = "drop")
-alert_gutt_D_random <- alert_score_D_random |>
-  select(Participant_ID, split, Alert_Net) |>
-  pivot_wider(names_from = split, values_from = Alert_Net)
-alert.corr.D.random <- cor(alert_gutt_D_random$A, alert_gutt_D_random$B, use = "complete.obs")
-alert.gutt.coef.D.random <- splitHalf(alert_gutt_D_random[, c("A", "B")])
-
-## Orienting
-orient_score_random <- ant_gutt_random |>
-  group_by(Participant_ID, split, Cue) |>
-  summarise(RT = mean(RT, na.rm = TRUE), .groups = "drop")
-orient_score_random <-  droplevels(orient_score_random[orient_score_random$Cue != "DOUBLE" & orient_score_random$Cue != "NOCUE",]) |>
-  group_by(Participant_ID, split) |>
-  summarise(Orient_Net = RT[Cue == "CENTRAL"] -
-              RT[Cue == "SPATIAL"], .groups = "drop")
-orient_gutt_random <- orient_score_random |>
-  select(Participant_ID, split, Orient_Net) |>
-  pivot_wider(names_from = split, values_from = Orient_Net)
-orient.corr.random <- cor(orient_gutt_random$A, orient_gutt_random$B, use = "complete.obs")
-orient.gutt.coef.random <- splitHalf(orient_gutt_random[, c("A", "B")])
-```
-
 # Correlation
+
 ```{r}
 #| label: Network Measure and Age Correlations
 
@@ -1275,7 +1213,7 @@ corrplot(measure.age.cor$r, method = "number",
 # Figures
 
 ```{r}
-#| label: Plots log-RT (Subsetting and Plots) for direct comparison
+#| label: Figures for easy comparison
 
 # Main Model
 ## Alerting 
