@@ -14,7 +14,7 @@ This file has all the code for the reproduction and further testing for @veríss
 ```{r}
 #| label: Package, Data and Seed information
 
-library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr); library(corrplot)
+library(dplyr); library(ggplot2); library(tidyr); library(lme4); library(psych); library(purrr); library(RColorBrewer); library(patchwork); library(irr); library(corrplot); library(ggsci)
 
 set.seed(1996)
 
@@ -1211,6 +1211,8 @@ corrplot(measure.age.cor$r, method = "number",
 
 # Figures
 
+## Linear Figures
+
 @veríssimo2022 have not provided the code to reproduce their figures. We have created approximations for them. The code required to reproduce our figure is also provided in the code block.
 
 ```{r}
@@ -1350,7 +1352,8 @@ plot_alerting<- ggplot() +
     title = "Age Interaction with Alerting",
     x = "Age (years)",
     y = "log-RT difference",
-    color = "Group"
+    color = "Group",
+    caption = "Note: ** =  p < .01, * = p < .05"
   ) +
     theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
@@ -1368,7 +1371,29 @@ plot_alerting<- ggplot() +
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
-        panel.background = element_blank())  
+        panel.background = element_blank())
+
+lm_central <- lm(difference ~ Age, data = ant.alert)
+lm_combined <- lm(difference ~ Age, data = ant.alert.c)
+end_age_central <- max(ant.alert$Age)
+end_age_combined <- max(ant.alert.c$Age)
+end_pred_central <- predict(lm_central, newdata = data.frame(Age = end_age_central))
+end_pred_combined <- predict(lm_combined, newdata = data.frame(Age = end_age_combined))
+
+plot_alerting <- plot_alerting +
+  annotate("text", 
+           x = end_age_central + 0.1,        
+           y = end_pred_central - 0.01,            
+           label = "**", 
+           color = "#E64B35",
+           size = 4, fontface = "bold", hjust = 0)
+plot_alerting <- plot_alerting +
+  annotate("text",
+           x = end_age_combined + 0.1,
+           y = end_pred_combined - 0.005,
+           label = "*",
+           color = "#4DBBD5",
+           size = 4, fontface = "bold", hjust = 0)
 
 # Orienting Plot
 plot_orienting<- ggplot() +
@@ -1385,7 +1410,7 @@ plot_orienting<- ggplot() +
     x = "Age (years)",
     y = "log-RT difference",
     color = "Group",
-    caption = "Central baseline is significant at p < .001"
+    caption = "Note: ** =  p < .01, * = p < .05"
   ) +
   theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
@@ -1407,17 +1432,27 @@ plot_orienting<- ggplot() +
         panel.background = element_blank()) + 
   coord_cartesian(clip = "off")
 
-lm_central <- lm(difference ~ Age, data = ant.orient.c)
-end_age <- max(ant.orient.c$Age)
-end_pred <- predict(lm_central, newdata = data.frame(Age = end_age))
+lm_central <- lm(difference ~ Age, data = ant.orient)
+lm_combined <- lm(difference ~ Age, data = ant.orient.c)
+end_age_central <- max(ant.orient$Age)
+end_age_combined <- max(ant.orient.c$Age)
+end_pred_central <- predict(lm_central, newdata = data.frame(Age = end_age_central))
+end_pred_combined <- predict(lm_combined, newdata = data.frame(Age = end_age_combined))
 
 plot_orienting <- plot_orienting +
   annotate("text", 
-           x = end_age + 0.1,        
-           y = end_pred + 0.006,            
-           label = "***", 
+           x = end_age_central + 0.1,        
+           y = end_pred_central + 0.0001,            
+           label = "**", 
            color = "#E64B35",
-           size = 4, fontface = "bold", hjust = 0)  
+           size = 4, fontface = "bold", hjust = 0)
+plot_orienting <- plot_orienting +
+  annotate("text",
+           x = end_age_combined + 0.1,
+           y = end_pred_combined - 0.0005,
+           label = "*",
+           color = "#4DBBD5",
+           size = 4, fontface = "bold", hjust = 0)
 
 # Conflict Plot
 plot_executive<- ggplot() +
@@ -1433,7 +1468,8 @@ plot_executive<- ggplot() +
     title = "Age Interaction with Conflict Avoidance",
     x = "Age (years)",
     y = "log-RT difference",
-    color = "Group"
+    color = "Group",
+    caption = "Note: All baselines are significant at p < .001"
   ) +
   theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
         plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
@@ -1456,6 +1492,125 @@ plot_executive<- ggplot() +
 
 
 ggsave("Orienting_x_Age.tiff", plot_orienting, 
-       width = 180, height = 220, units = "mm", 
+       width = 6.5, height = 7.5, units = "in", 
        dpi = 600, compression = "lzw", bg = "white")
+ggsave("Orienting_x_Age.png", plot_orienting, 
+       width = 6.5, height = 7.5, units = "in", 
+       dpi = 600)
+ggsave("Alerting_x_Age.png", plot_alerting, 
+       width = 6.5, height = 7.5, units = "in", 
+       dpi = 600)
+ggsave("Conflict_x_Age.png", plot_executive, 
+       width = 6.5, height = 7.5, units = "in", 
+       dpi = 600)
+```
+
+## Quadratic Figures
+
+```{r}
+#| label: Figures for easy comparison
+
+# Main Model
+## Executive Model
+ant.exec.main <- ant.main|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec <- ant.exec.main |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec <- ant.exec |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age <- ant.main |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec <- ant.exec |>
+  left_join(exec.age, by = "Participant_ID")
+
+# Combined Model
+#Executive combined Model
+ant.exec.combined <- ant.combined|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec.c <- ant.exec.combined |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec.c <- ant.exec.c |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age.c <- ant.combined |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec.c <- ant.exec.c |>
+  left_join(exec.age.c, by = "Participant_ID")
+
+# Double Model
+## Executive 
+ant.exec.double <- ant.double|> group_by(Participant_ID, Flanker) |>
+  summarise(Mean_RT = mean(RT, na.rm = TRUE), .groups = "drop")
+ant.exec.d <- ant.exec.double |>
+  pivot_wider(names_from = Flanker, values_from = Mean_RT)
+ant.exec.d <- ant.exec.d |>
+  mutate(difference = log(INCONGRUENT) - log(CONGRUENT))
+exec.age.d <- ant.double |>
+  select(Participant_ID, Age) |>
+  distinct(Participant_ID, .keep_all = TRUE)
+ant.exec.d <- ant.exec.d |>
+  left_join(exec.age.d, by = "Participant_ID")
+
+# Conflict Plot
+plot_executive_q<- ggplot() +
+  geom_point(data = ant.exec, aes(Age, difference, color = "Central"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec, aes(Age, difference, color = "Central"), method = "lm", formula = y ~ poly(x, 2), se = FALSE) + 
+  geom_point(data = ant.exec.c, aes(Age, difference, color = "Combined"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec.c, aes(Age, difference, color = "Combined"), method = "lm", formula = y ~ poly(x, 2), se = FALSE) + 
+  geom_point(data = ant.exec.d, aes(Age, difference, color = "Double"), alpha = 0.02) + 
+  geom_smooth(data = ant.exec.d, aes(Age, difference, color = "Double"), method = "lm", formula = y ~ poly(x, 2), se = FALSE) +
+  scale_y_continuous(limits = c(-0.3, 0.3)) +
+  scale_color_npg(name = "Baseline") +
+  labs(
+    title = "Quadratic Age effects on Conflict Avoidance",
+    x = "Age (years)",
+    y = "log-RT difference",
+    color = "Group",
+    caption = "Note: ** =  p < .01, * = p < .05"
+  ) +
+  theme(plot.title = element_text(hjust = 0.5, size = rel(1.2), face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = rel(1), color = "grey40"),
+        plot.caption = element_text(hjust = 1, size = rel(0.8), color = "grey50"),
+        axis.title = element_text(face = "bold", size = rel(1)),
+        axis.text = element_text(color = "black", size = rel(0.9)),
+        axis.line = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks = element_line(linewidth = 0.5, color = "black"),
+        axis.ticks.length = unit(0.2, "mm"),
+        legend.title = element_text(size = rel(1), face = "bold"),
+        legend.text = element_text(size = rel(0.9)),
+        legend.key.size = unit(0.8, "cm"),
+        legend.position = "top",
+        legend.margin = margin(0, 0, 0, 0),
+        panel.grid = element_blank(),
+        panel.border = element_blank(),
+        plot.background = element_blank(),
+        plot.margin = margin(5, 10, 5, 5, "pt"),
+        panel.background = element_blank()) 
+
+lm_q_central <- lm(difference ~ Age, data = ant.exec)
+lm_q_combined <- lm(difference ~ Age, data = ant.exec.c)
+end_q_age_central <- max(ant.exec$Age)
+end_q_age_combined <- max(ant.exec.c$Age)
+end_q_pred_central <- predict(lm_q_central, newdata = data.frame(Age = end_q_age_central))
+end_q_pred_combined <- predict(lm_q_combined, newdata = data.frame(Age = end_q_age_combined))
+plot_executive_q <- plot_executive_q +
+  annotate("text", 
+           x = end_q_age_central + 0.1,        
+           y = end_q_pred_central + 0.05,            
+           label = "**", 
+           color = "#E64B35",
+           size = 4, fontface = "bold", hjust = 0)
+plot_executive_q <- plot_executive_q +
+  annotate("text", 
+           x = end_q_age_combined + 0.1,        
+           y = end_q_pred_combined + 0.036,            
+           label = "*", 
+           color = "#4DBBD5",
+           size = 4, fontface = "bold", hjust = 0)  
+
+
+ggsave("Conflict_x_Age_Quadratic.png", plot_executive_q, 
+       width = 6.5, height = 7.5, units = "in", 
+       dpi = 600)
 ```
