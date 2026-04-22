@@ -507,7 +507,8 @@ confint(m.neo, parm=c("Cue.ALERTING:c.(Age)", "Cue.ORIENTING:c.(Age)", "Flanker.
 
 ## Double Baseline (Log and Raw RT)
 
-The code for the double baseline models are in the following blocks. In these models the central cue was substituted with the double cue instead. Although @veríssimo2022 have not applied this baseline in their study, this is the recommended baseline by @fan2009, whom @veríssimo2022 base their ANT paradigm on.$$Alerting = NoCue - Double$$ $$Orienting = Double - Spatial$$ $$Conflict = Incongruent - Congruent$$
+The code for the double baseline models are in the following blocks. In these models the central cue was substituted with the double cue instead. Although @veríssimo2022 have not considered this baseline for analysis in their study, this is the recommended baseline by @fan2009, whom @veríssimo2022 base their ANT paradigm on with their work in 2005.\
+$$Alerting = NoCue - Double$$ $$Orienting = Double - Spatial$$ $$Conflict = Incongruent - Congruent$$
 
 ```{r}
 #| label: Subset data for Linear Double Model
