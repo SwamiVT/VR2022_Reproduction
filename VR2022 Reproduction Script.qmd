@@ -833,7 +833,6 @@ ggplot(models.fit.raw, aes(x = Breakpoint, y = deltaAIC)) +
     theme_classic()
 
 # Double Model
-# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
 models.double.fit <- NULL
 
 for(bp.d in seq(min(ant.double$Age), max(ant.double$Age), 1)){
@@ -883,7 +882,6 @@ ggplot(models.double.fit, aes(x = Breakpoint, y = deltaAIC)) +
     theme_classic()
 
 # Combined Model
-# (no random slope due to non-convergence; REML=F more appropriate for model comparisons)
 models.combined.fit <- NULL
 
 for(bp.c in seq(min(ant.combined$Age), max(ant.combined$Age), 1)){
@@ -1367,12 +1365,14 @@ plot_alerting<- ggplot() +
         legend.title = element_text(size = rel(1), face = "bold"),
         legend.text = element_text(size = rel(0.9)),
         legend.key.size = unit(0.8, "cm"),
-        legend.position = "top",
-        legend.margin = margin(0, 0, 0, 0),
+        legend.position = c(0.9, 0.9),
+        legend.margin = margin(2, 2, 2, 2),
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
-        panel.background = element_blank())
+        plot.margin = margin(5, 10, 5, 5, "pt"),
+        panel.background = element_blank()) + 
+  coord_cartesian(clip = "off")
 
 lm_central <- lm(difference ~ Age, data = ant.alert)
 lm_combined <- lm(difference ~ Age, data = ant.alert.c)
@@ -1395,6 +1395,23 @@ plot_alerting <- plot_alerting +
            label = "*",
            color = "#4DBBD5",
            size = 4, fontface = "bold", hjust = 0)
+plot_alerting <- plot_alerting +
+  annotate("text",
+           x = -Inf,
+           y = -0.4,
+           label = "\u2193 Worse",
+           hjust = -0.1,
+           vjust = 0,
+           size = 3.5,
+           fontface = "italic") +
+  annotate("text",
+           x = -Inf,
+           y = 0.4,
+           label = "\u2191 Better",
+           hjust = -0.1,
+           vjust = 1,
+           size = 3.5,
+           fontface = "italic")
 
 # Orienting Plot
 plot_orienting<- ggplot() +
@@ -1454,6 +1471,23 @@ plot_orienting <- plot_orienting +
            label = "*",
            color = "#4DBBD5",
            size = 4, fontface = "bold", hjust = 0)
+plot_orienting <- plot_orienting +
+  annotate("text",
+           x = -Inf,
+           y = -0.25,
+           label = "\u2193 Worse",
+           hjust = -0.1,
+           vjust = 0,
+           size = 3.5,
+           fontface = "italic") +
+  annotate("text",
+           x = -Inf,
+           y = 0.25,
+           label = "\u2191 Better",
+           hjust = -0.1,
+           vjust = 1,
+           size = 3.5,
+           fontface = "italic")
 
 # Conflict Plot
 plot_executive<- ggplot() +
@@ -1483,14 +1517,31 @@ plot_executive<- ggplot() +
         legend.title = element_text(size = rel(1), face = "bold"),
         legend.text = element_text(size = rel(0.9)),
         legend.key.size = unit(0.8, "cm"),
-        legend.position = "top",
-        legend.margin = margin(0, 0, 0, 0),
+        legend.position = c(0.9, 0.9),
+        legend.margin = margin(2, 2, 2, 2),
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
         plot.margin = margin(5, 10, 5, 5, "pt"),
-        panel.background = element_blank()) 
-
+        panel.background = element_blank()) + 
+  coord_cartesian(clip = "off")
+plot_executive <- plot_executive +
+  annotate("text",
+           x = -Inf,
+           y = -0.3,
+           label = "\u2193 Better",
+           hjust = -0.1,
+           vjust = 0,
+           size = 3.5,
+           fontface = "italic") +
+  annotate("text",
+           x = -Inf,
+           y = 0.3,
+           label = "\u2191 Worse",
+           hjust = -0.1,
+           vjust = 1,
+           size = 3.5,
+           fontface = "italic")
 
 ggsave("Orienting_x_Age.tiff", plot_orienting, 
        width = 6.5, height = 7.5, units = "in", 
@@ -1581,13 +1632,14 @@ plot_executive_q<- ggplot() +
         legend.title = element_text(size = rel(1), face = "bold"),
         legend.text = element_text(size = rel(0.9)),
         legend.key.size = unit(0.8, "cm"),
-        legend.position = "top",
-        legend.margin = margin(0, 0, 0, 0),
+        legend.position = c(0.9, 0.9),
+        legend.margin = margin(2, 2, 2, 2),
         panel.grid = element_blank(),
         panel.border = element_blank(),
         plot.background = element_blank(),
         plot.margin = margin(5, 10, 5, 5, "pt"),
-        panel.background = element_blank()) 
+        panel.background = element_blank()) + 
+  coord_cartesian(clip = "off") 
 
 lm_q_central <- lm(difference ~ Age, data = ant.exec)
 lm_q_combined <- lm(difference ~ Age, data = ant.exec.c)
@@ -1608,7 +1660,24 @@ plot_executive_q <- plot_executive_q +
            y = end_q_pred_combined + 0.036,            
            label = "*", 
            color = "#4DBBD5",
-           size = 4, fontface = "bold", hjust = 0)  
+           size = 4, fontface = "bold", hjust = 0)
+plot_executive_q <- plot_executive_q +
+  annotate("text",
+           x = -Inf,
+           y = -0.3,
+           label = "\u2193 Better",
+           hjust = -0.1,
+           vjust = 0,
+           size = 3.5,
+           fontface = "italic") +
+  annotate("text",
+           x = -Inf,
+           y = 0.3,
+           label = "\u2191 Worse",
+           hjust = -0.1,
+           vjust = 1,
+           size = 3.5,
+           fontface = "italic")
 
 
 ggsave("Conflict_x_Age_Quadratic.png", plot_executive_q, 
